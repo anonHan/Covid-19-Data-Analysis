@@ -2,6 +2,7 @@
 --1. First we break the things down by country, and answer the quite basic questions like:
 --		-- What is the total number people, cases and deaths.
 --2. Then we try to make some analysis by continent, and answer the similar questions there as well.
+--3. After that we try to anakyze that how many tests are conducted by each country, how many people were vaccincated, what is the percentage of vaccinated people in each countrym, etc.
 
 
 
@@ -173,7 +174,7 @@ ORDER BY	Percentage_of_Population_Died DESC;
 
 -- Peru reported the highest percent of deaths based upon it's population size, where 0.63% of the population wiped out by the Covid-19. 
 
----------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Let's see how the figures looks like by continent.
 
 -- 11. Get the total number of cases and deaths in each continent by year?
@@ -205,7 +206,7 @@ ORDER BY	2 Desc;
 -- The highest number of deaths are also reported in the continent of Europe, however it is followed by North America not Asia, making North America the second continent with highest number of fatalities.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- Analysis on Global Level
+-- Analysis at Global Level
 
 -- 14. Let's get the Total number of cases and deaths now globally by date.
 SELECT		date AS Month_end,
@@ -227,12 +228,121 @@ GROUP BY	EOMONTH(date)
 ORDER BY	1;
 
 -- 16. Get the Total number of cases and deaths now globally.
-SELECTMAX(total_cases) as Cases,
+SELECT		MAX(total_cases) as Cases,
 			MAX(total_deaths) as Deaths,
 			ROUND((MAX(total_deaths)/MAX(total_cases))*100,5) Death_rate
 FROM		Death
 ORDER BY	1;
 
-SELECT * FROM Death;
- 
-select distinct location from Country order by 1;
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Now we try to analyze the Test and Vaccinated tables.
+
+-- If we look at the columns of the Test table, the total_tests, new_tests, total_tests_per_thousand, etc are of type nvarchar, that we don't want, because it will create 
+-- issues for us while analyzing the data. So, we should change its data type to int and float.
+ALTER TABLE Test ALTER COLUMN total_tests BIGINT;
+ALTER TABLE Test ALTER COLUMN new_tests BIGINT;
+ALTER TABLE Test ALTER COLUMN total_tests_per_thousand FLOAT;
+ALTER TABLE Test ALTER COLUMN new_tests_per_thousand FLOAT;
+ALTER TABLE Test ALTER COLUMN new_tests_smoothed INT;
+ALTER TABLE Test ALTER COLUMN new_tests_smoothed_per_thousand FLOAT;
+ALTER TABLE Test ALTER COLUMN positive_rate FLOAT;
+ALTER TABLE Test ALTER COLUMN tests_per_case FLOAT;
+
+-- The same case is in vaccinated table so let's try to convert  its columns as well, but I am only going to convert that seem useful to me now, rest of them we can 
+-- convert on the fly.
+ALTER TABLE Vaccination ALTER COLUMN total_vaccinations BIGINT;
+ALTER TABLE Vaccination ALTER COLUMN people_vaccinated BIGINT;
+ALTER TABLE Vaccination ALTER COLUMN people_fully_vaccinated BIGINT;
+ALTER TABLE Vaccination ALTER COLUMN total_boosters BIGINT;
+ALTER TABLE Vaccination ALTER COLUMN new_vaccinations BIGINT;
+
+
+-- 17. What is total number of tests conducted by each country?
+SELECT		location,
+			sum(total_tests) AS Total_tests
+FROM		Test
+WHERE		continent IS NOT NULL
+GROUP BY	location
+ORDER BY	2 DESC;
+-- China, US and India are the top three countries with the highest number of tests that are performed, where as there are some locations for which the data is not available.
+
+-- 18. What is the total number of people who are vaccinated by each country?
+SELECT		location,
+			MAX(people_vaccinated) AS people_vaccinated,
+			MAX(people_fully_vaccinated) AS fully_vaccinated
+FROM		Vaccination
+WHERE		continent IS NOT NULL
+GROUP BY	location
+ORDER BY	2 DESC;
+-- Again China, India and US are on the top in terms of the number of people who are vaccinated by these countries, which is justifiable, because these three are the 
+-- countries that hold the large volume of population.
+
+-- Now let's see that what is proportion of population is being injected with anti-infection doses.
+-- 19. What percent of masses vaccinated by each country?
+SELECT		V.location,
+			MAx(population) as total_population,
+			ROUND((SUM(V.new_vaccinations)/MAX(C.population))*100,4) AS percentage_of_people_vaccinated,
+			ROUND((MAX(V.people_fully_vaccinated)/MAX(C.population))*100,4) AS percentage_of_people_fully_vaccinated
+FROM		Vaccination V JOIN Country C
+ON			C.iso_code = V.iso_code AND C.date = V.date
+WHERE		V.continent IS NOT NULL
+GROUP BY	V.location
+ORDER BY	3 DESC;
+-- We can observe that Gibraltar(an overseas territory of UK and a very small territory), United Arab Emirates, Samoa, Tonga, and Pitcairn have vaccinated 100% 
+-- of their population, and there could be two reasons behind that first and foremost is their size of population is quite small and another could be that they
+-- are economically strong countries, that can afford to vaccinate their whole population such as UAE. 
+
+-- 20. Get the number of vaccination done over time for India.
+SELECT		V.date,	
+			V.location,
+			SUM(V.new_vaccinations) OVER(PARTITION BY location order by date) AS Vaccinations_given
+FROM		Vaccination V
+WHERE		V.continent IS NOT NULL AND location='India'
+ORDER BY	1 ASC;
+-- OR 
+-- But the belowe query return the NULL when there are no data for vaccination.
+SELECT		V.date,	
+			V.location,
+			people_vaccinated AS Vaccinations_given
+FROM		Vaccination V
+WHERE		V.continent IS NOT NULL AND location='India'
+ORDER BY	1 ASC;
+
+
+
+select * from test;
+SELECT * FROM Vaccination ORDER BY date;
+
+-- positive rate
+-- Get the highest positive rate of each country.
+SELECT		location,
+			MAX(positive_rate) AS positive_rate
+FROM		Test
+WHERE		continent IS NOT NULL
+GROUP BY	location
+HAVING		MAX(positive_rate) IS NOT NULL
+ORDER BY	2 DESC;
+-- As we can see that Curacao had the highest positive_rate, so let's dig deeper and see that how much people are there and what year it was.
+
+-- Get the positive_rate, population, date and location and order it by positive_rate in descending order. Analyse the 
+SELECT		C.date,
+			C.location,
+			C.population,
+			MAX(positive_rate) AS positive_rate
+FROM		Test T JOIN Country C 
+ON			C.location = T.location AND C.date = T.date
+WHERE		C.continent IS NOT NULL
+GROUP BY	C.location, C.date, C.population
+HAVING		MAX(positive_rate) IS NOT NULL
+ORDER BY	4 DESC;
+
+
+-- Let's finish here for now, we have made quite good analysis. What we may want now is to go to Power BI Desktop or Tableau Public and start building report and dashboard.
+-- I am going to use Power BI desktop in my case. We have two options in Power BI desktop, either we can Import the data directly or we can use DirectQuery.
+-- When the data is connected by Import mode we can use Q&A feature of Power BI, which is not possible for DirectQuery and DirectQuery is recommended when the dataset contains
+-- millions of rows and is of huge size. However, this dataset is under 50 mb, so we can use Import mode. Additionally, we are going to do a lot of data cleaning in Power BI as
+-- well which will decrease the size of the data model as well.
+-- Another thing that I want to highlight is that Power BI DirectQuery mode also allows use of SQL queries, which means we can use the SQL query to fetch the data from the database.
+-- We may use all the predefined queries from here in Power BI, but we are going to use the same metrics in Power BI desktop as well under import mode and we will see the 
+-- facts and figures graphically.
+-- GOOD LUCK!
