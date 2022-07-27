@@ -65,13 +65,15 @@ WHERE		continent IS NOT NULL
 ORDER BY	2,1;
 
 
--- 4. What is the total number of deaths in each location?
+-- 4. What is the total number of deaths at each location?
 SELECT		location,
 			date,
 			total_deaths
 FROM		Death
 WHERE		continent IS NOT NULL
 ORDER BY	2,1;
+
+select year(date), location,max(population) from country group by location,year(date) order by 2,1;
 
 -- 5. What is the ratio of death to the total number of cases?
 SELECT		location,
@@ -208,7 +210,7 @@ ORDER BY	2 Desc;
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Analysis at Global Level
 
--- 14. Let's get the Total number of cases and deaths now globally by date.
+-- 14. Let's get the Total number of cases and deaths globally by date.
 SELECT		date AS Month_end,
 			MAX(total_cases) as Cases,
 			MAX(cast(total_deaths AS INT)) as Deaths,
@@ -218,7 +220,7 @@ WHERE		continent IS NOT NULL
 GROUP BY	date
 ORDER BY    1;
 
--- 15. Get the Total number of cases and deaths now globally by Month.
+-- 15. Get the Total number of cases and deaths globally by Month.
 SELECT		EOMONTH(date) AS Month_end,
 			MAX(total_cases) as Cases,
 			MAX(total_deaths) as Deaths,
@@ -227,7 +229,7 @@ FROM		Death
 GROUP BY	EOMONTH(date)
 ORDER BY	1;
 
--- 16. Get the Total number of cases and deaths now globally.
+-- 16. Get the Total number of cases and deaths globally.
 SELECT		MAX(total_cases) as Cases,
 			MAX(total_deaths) as Deaths,
 			ROUND((MAX(total_deaths)/MAX(total_cases))*100,5) Death_rate
@@ -259,12 +261,14 @@ ALTER TABLE Vaccination ALTER COLUMN new_vaccinations BIGINT;
 
 -- 17. What is total number of tests conducted by each country?
 SELECT		location,
-			sum(total_tests) AS Total_tests
+			max(total_tests) AS Total_tests
 FROM		Test
 WHERE		continent IS NOT NULL
 GROUP BY	location
 ORDER BY	2 DESC;
--- China, US and India are the top three countries with the highest number of tests that are performed, where as there are some locations for which the data is not available.
+
+select * from test where location = 'india' order by date;
+-- China, US and India are the top three countries with the highest number of tests that were conducted, whereas there are some locations for which the data is not available.
 
 -- 18. What is the total number of people who are vaccinated by each country?
 SELECT		location,
@@ -346,3 +350,5 @@ ORDER BY	4 DESC;
 -- We may use all the predefined queries from here in Power BI, but we are going to use the same metrics in Power BI desktop as well under import mode and we will see the 
 -- facts and figures graphically.
 -- GOOD LUCK!
+
+
