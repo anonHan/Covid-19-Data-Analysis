@@ -13,7 +13,4 @@ how many tests center were there, and so on. I have created few of the useful me
 death growth rate, by week and month. 
 
 The main objective of this project is to keep us ready for any new pandemic, so that we can save millions of lives by saving the lives of the people and by saving the 
-economy of the countries from collapsing.
-
-#### Final note:
-This project is still in development phase.
+economy of the countries from collapsing. The idea of the report design was taken from the Microsoft's website, so all the credits for the design goes to the MS Team, however many changes have been made while working on this project.
